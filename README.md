@@ -93,6 +93,145 @@ Credit_Scoring_Capstone/
 ├── .gitignore
 └── README.md
 
+## Quick Start
+
+The easiest way to run the completed application is with Docker.
+
+### Prerequisites
+
+Install:
+
+- Docker Desktop
+- Git
+
+The trained model artifacts are included in the repository, so the Home Credit dataset is **not required simply to run the web application**.
+
+The dataset is only required if you want to reproduce the modelling notebooks.
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/dimasputra7/capstone_project_1_fintech.git
+cd capstone_project_1_fintech
+```
+
+### Run with Docker
+
+Make sure Docker Desktop is running.
+
+From the project root, run:
+
+```bash
+docker compose up --build
+```
+
+Docker will build and start two services:
+
+- `backend` — Flask model-serving API
+- `frontend` — React application served through Nginx
+
+After the containers have started, open:
+
+- Frontend: `http://localhost:8080`
+- Backend health check: `http://localhost:5000/health`
+
+The frontend communicates with the Flask backend to generate credit-risk predictions.
+
+### Stop the Application
+
+Press `Ctrl + C` in the terminal running Docker Compose.
+
+Then run:
+
+```bash
+docker compose down
+```
+
+### Run Again
+
+After the images have already been built, the application can normally be started with:
+
+```bash
+docker compose up
+```
+
+If project dependencies or Docker configuration have changed, rebuild with:
+
+```bash
+docker compose up --build
+```
+
+## Reproducing the Modelling Workflow
+
+The dataset is not stored in this GitHub repository.
+
+To reproduce the modelling experiments, place the Home Credit dataset in:
+
+```text
+data/application_train.csv
+```
+
+The notebooks are organised approximately in execution order:
+
+```text
+notebooks/
+├── 01_Data_EDA.ipynb
+├── 02_Base_Models.ipynb
+├── 03_Stacking_Calibration.ipynb
+├── 04_Financial_Analysis.ipynb
+├── 05_Explainability.ipynb
+└── 06_Deployment.ipynb
+```
+
+The `models/` directory contains the trained model artifacts used by the deployed application.
+
+The `outputs/` directory contains experiment results, evaluation summaries, and generated figures.
+
+## Application Architecture
+
+```text
+Applicant Data
+      │
+      ▼
+   React UI
+      │
+      │ JSON request
+      ▼
+   Flask API
+      │
+      ▼
+Model Service
+      │
+      ├── Logistic Regression
+      ├── XGBoost
+      └── PyTorch MLP
+      │
+      ▼
+Stacking Meta-Learner
+      │
+      ▼
+Probability Calibration
+      │
+      ▼
+Final Probability of Default (PD)
+      │
+      ├── Expected Loss
+      ├── Indicative Interest Rate
+      └── XGBoost SHAP Explanation
+      │
+      ▼
+Results returned to React UI
+```
+
+## Important Notes
+
+- `AMT_CREDIT` is used as a proxy for Exposure at Default (EAD).
+- LGD can be changed in the application for scenario analysis.
+- Changing LGD affects the financial calculations but does not change the predicted PD.
+- SHAP explanations describe the XGBoost component rather than the complete calibrated stacking ensemble.
+- The financial calculations and indicative interest rates are illustrative research outputs.
+- The current Docker configuration is designed for local deployment.
+
 This README also makes the distinction we've just spent time learning: **WoE LR is a benchmark, while regular LR + XGB + MLP form the stack**.
 
 After saving it, stage the new README:
