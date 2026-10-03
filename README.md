@@ -1,177 +1,172 @@
-# Credit Scoring Capstone Project
+# A Comparative Benchmarking and Hybrid Ensemble Framework for Credit Scoring
 
-## A Comparative Benchmarking and Hybrid Ensemble Framework for Credit Scoring
+A machine-learning credit-scoring research prototype comparing Logistic Regression, XGBoost, and a PyTorch Multi-Layer Perceptron under a common experimental framework.
 
-This project develops and evaluates a machine-learning credit scoring framework using the Home Credit Default Risk dataset.
+The project combines the base models using out-of-fold stacking, evaluates probability calibration, translates the final Probability of Default (PD) into scenario-based financial outputs, provides XGBoost SHAP explanations, and deploys the resulting pipeline through Flask, React, and Docker.
 
-The project compares multiple credit-risk modelling approaches and combines selected models through a stacking ensemble. The final probability of default (PD) is calibrated and used in an illustrative financial risk framework for expected loss and indicative interest-rate estimation.
+## Project Overview
 
-## Project Workflow
+The implemented pipeline is:
 
-1. Data cleaning and exploratory data analysis
-2. Feature engineering and preprocessing
-3. Train/validation/test preparation
-4. Logistic Regression benchmarking
-5. Weight of Evidence (WoE) Logistic Regression benchmarking
-6. Class imbalance experiments
-7. XGBoost modelling
-8. PyTorch Multi-Layer Perceptron (MLP)
-9. Out-of-fold prediction generation
-10. Logistic Regression stacking ensemble
-11. Probability calibration
-12. Final model evaluation
-13. Expected loss analysis
-14. Indicative interest-rate calculation
-15. SHAP explainability
-16. Flask REST API
-17. React user interface
-18. Docker deployment
+```text
+Home Credit Data
+       │
+       ▼
+Cleaning & Feature Engineering
+       │
+       ▼
+Model-Specific Preprocessing
+       │
+       ├── Logistic Regression
+       ├── XGBoost
+       └── PyTorch MLP
+                │
+                ▼
+       OOF Stacking
+                │
+                ▼
+    Meta Logistic Regression
+                │
+                ▼
+     Probability Calibration
+                │
+                ▼
+            Final PD
+          /          \
+         ▼            ▼
+ Expected Loss    XGBoost SHAP
+ Indicative Rate  Explanation
+          \          /
+           ▼        ▼
+           Flask API
+               │
+               ▼
+         React Dashboard
+               │
+               ▼
+             Docker
+```
 
-## Models
+## Key Features
 
-The main predictive models investigated are:
-
-- Logistic Regression
-- WoE Logistic Regression
+- Home Credit Default Risk dataset
+- Logistic Regression benchmark
+- Weight of Evidence Logistic Regression benchmark
 - XGBoost
-- Multi-Layer Perceptron (PyTorch)
+- PyTorch MLP
+- Class weighting and SMOTE experiments
+- Out-of-fold stacking
+- Logistic Regression meta-learner
+- Platt and isotonic probability calibration
+- Expected Loss scenario analysis
+- Indicative interest-rate prototype
+- XGBoost SHAP explanations
+- Flask REST API
+- React/Vite dashboard
+- Docker Compose deployment
 
-The final stacking framework combines predictions from:
+## Recorded Results
 
-- Logistic Regression
-- XGBoost
-- MLP
+### Individual Model Validation
 
-A Logistic Regression meta-learner combines the base-model probabilities.
+| Model | ROC-AUC | PR-AUC | Brier Score |
+|---|---:|---:|---:|
+| Logistic Regression | 0.7515 | 0.2342 | 0.0683 |
+| XGBoost | **0.7625** | **0.2543** | **0.0675** |
+| MLP | 0.7411 | 0.2243 | 0.0692 |
 
-## Probability Calibration
+### Final Probability Comparison
 
-Raw ensemble probabilities are evaluated alongside:
+| Output | ROC-AUC | PR-AUC | Brier Score |
+|---|---:|---:|---:|
+| Raw Stack | 0.7627 | 0.2517 | 0.0682 |
+| Platt | 0.7627 | 0.2517 | 0.0683 |
+| Isotonic | 0.7618 | 0.2425 | **0.0675** |
 
-- Platt scaling
-- Isotonic regression
+Isotonic calibration is used for the deployed final PD because it produced the lowest recorded Brier Score among the compared final probability outputs.
 
-The deployed framework uses the selected calibrated probability as the final probability of default (PD).
+The calibration method was selected after comparison on the final held-out evaluation set; this is documented as a methodological limitation rather than treated as an independent untouched final estimate.
 
-## Financial Risk Framework
+## Documentation
 
-The calibrated PD is used to calculate illustrative financial risk measures.
+Detailed technical documentation is available in:
 
-Expected Loss:
-
-EL = PD × LGD × EAD
-
-where:
-
-- PD = Probability of Default
-- LGD = Loss Given Default
-- EAD = Exposure at Default
-
-For this prototype, the loan credit amount (`AMT_CREDIT`) is used as a proxy for EAD.
-
-The system also produces an illustrative indicative interest rate based on the estimated credit risk.
-
-These outputs are intended for research and demonstration purposes only and do not represent actual lending decisions or loan offers.
-
-## Explainability
-
-SHAP is used to explain the XGBoost component of the framework and identify features contributing to individual risk predictions.
-
-SHAP explanations describe the XGBoost model component and should not be interpreted as causal explanations or exact explanations of the final calibrated ensemble probability.
+- [Methodology](docs/methodology.md) — data preparation, modelling, stacking, calibration, financial framework, and explainability.
+- [Experiment Summary](docs/experiments.md) — recorded results, experiments, modelling decisions, and limitations.
+- [System Architecture](docs/architecture.md) — saved models, Flask API, React frontend, and Docker deployment.
 
 ## Repository Structure
 
 ```text
-Credit_Scoring_Capstone/
-├── deployment/        # Flask API and model-serving code
-├── frontend/          # React/Vite frontend
-├── models/            # Saved trained model artifacts
-├── notebooks/         # Modelling and analysis notebooks
-├── outputs/           # Experimental results and figures
+capstone_project_1_fintech/
+├── deployment/          # Flask API and model-serving code
+├── docs/                # Technical project documentation
+├── frontend/            # React/Vite frontend
+├── models/              # Saved trained model artifacts
+├── notebooks/           # Modelling and analysis notebooks
+├── outputs/             # Experiment results and figures
 ├── docker-compose.yml
 ├── .dockerignore
 ├── .gitignore
 └── README.md
+```
 
-## Quick Start
+## Quick Start with Docker
 
-The easiest way to run the completed application is with Docker.
-
-### Prerequisites
+### Requirements
 
 Install:
 
-- Docker Desktop
 - Git
+- Docker Desktop
 
-The trained model artifacts are included in the repository, so the Home Credit dataset is **not required simply to run the web application**.
+The trained model artifacts are included in the repository. The Home Credit dataset is therefore not required simply to run the completed web application.
 
-The dataset is only required if you want to reproduce the modelling notebooks.
-
-### Clone the Repository
+### Clone
 
 ```bash
 git clone https://github.com/dimasputra7/capstone_project_1_fintech.git
 cd capstone_project_1_fintech
 ```
 
-### Run with Docker
+### Start
 
-Make sure Docker Desktop is running.
-
-From the project root, run:
+Make sure Docker Desktop is running, then:
 
 ```bash
 docker compose up --build
 ```
 
-Docker will build and start two services:
-
-- `backend` — Flask model-serving API
-- `frontend` — React application served through Nginx
-
-After the containers have started, open:
+Open:
 
 - Frontend: `http://localhost:8080`
-- Backend health check: `http://localhost:5000/health`
+- Backend health endpoint: `http://localhost:5000/health`
 
-The frontend communicates with the Flask backend to generate credit-risk predictions.
+### Stop
 
-### Stop the Application
-
-Press `Ctrl + C` in the terminal running Docker Compose.
-
-Then run:
+Press `Ctrl + C` in the Docker Compose terminal and run:
 
 ```bash
 docker compose down
 ```
 
-### Run Again
-
-After the images have already been built, the application can normally be started with:
+After the images have already been built, the application can normally be restarted with:
 
 ```bash
 docker compose up
 ```
 
-If project dependencies or Docker configuration have changed, rebuild with:
+## Reproducing the Modelling Experiments
 
-```bash
-docker compose up --build
-```
+The dataset is intentionally excluded from GitHub.
 
-## Reproducing the Modelling Workflow
-
-The dataset is not stored in this GitHub repository.
-
-To reproduce the modelling experiments, place the Home Credit dataset in:
+To reproduce the modelling workflow, obtain the Home Credit `application_train.csv` dataset and place it at:
 
 ```text
 data/application_train.csv
 ```
 
-The notebooks are organised approximately in execution order:
+The notebooks are organised approximately in workflow order:
 
 ```text
 notebooks/
@@ -183,60 +178,46 @@ notebooks/
 └── 06_Deployment.ipynb
 ```
 
-The `models/` directory contains the trained model artifacts used by the deployed application.
+The notebooks document the experimental workflow, while `models/` contains the serialized artifacts used by the deployed application and `outputs/` contains generated results and figures.
 
-The `outputs/` directory contains experiment results, evaluation summaries, and generated figures.
+## Financial Framework
 
-## Application Architecture
+Expected Loss is calculated as:
 
-```text
-Applicant Data
-      │
-      ▼
-   React UI
-      │
-      │ JSON request
-      ▼
-   Flask API
-      │
-      ▼
-Model Service
-      │
-      ├── Logistic Regression
-      ├── XGBoost
-      └── PyTorch MLP
-      │
-      ▼
-Stacking Meta-Learner
-      │
-      ▼
-Probability Calibration
-      │
-      ▼
-Final Probability of Default (PD)
-      │
-      ├── Expected Loss
-      ├── Indicative Interest Rate
-      └── XGBoost SHAP Explanation
-      │
-      ▼
-Results returned to React UI
-```
+`EL = PD × LGD × EAD`
 
-## Important Notes
+For this prototype:
 
-- `AMT_CREDIT` is used as a proxy for Exposure at Default (EAD).
-- LGD can be changed in the application for scenario analysis.
-- Changing LGD affects the financial calculations but does not change the predicted PD.
-- SHAP explanations describe the XGBoost component rather than the complete calibrated stacking ensemble.
-- The financial calculations and indicative interest rates are illustrative research outputs.
-- The current Docker configuration is designed for local deployment.
+- the calibrated ensemble probability is used as PD;
+- LGD is a user-controlled scenario assumption;
+- `AMT_CREDIT` is used as a proxy for EAD.
 
-This README also makes the distinction we've just spent time learning: **WoE LR is a benchmark, while regular LR + XGB + MLP form the stack**.
+The simplified indicative-rate prototype uses:
 
-After saving it, stage the new README:
+`Indicative Rate = 0.09 + (PD × LGD)`
 
-**TERMINAL — project root**
-```powershell
-git add README.md
-git status
+These calculations are illustrative research outputs rather than actual lending prices.
+
+## Technology Stack
+
+**Modelling:** Python, pandas, NumPy, scikit-learn, XGBoost, PyTorch
+
+**Explainability:** SHAP
+
+**Backend:** Flask, Flask-CORS
+
+**Frontend:** React, Vite
+
+**Deployment:** Docker, Docker Compose, Nginx
+
+## Limitations
+
+This project is a research prototype. Important limitations include the use of a historical single dataset, class imbalance, simplified LGD/EAD assumptions, simplified indicative pricing, calibration selection using the final evaluation set, XGBoost-specific SHAP explanations, and local rather than public production deployment.
+
+See the [Experiment Summary](docs/experiments.md) for further details.
+
+## Disclaimer
+
+This system is an academic research prototype. Predictions, Expected Loss calculations, SHAP explanations, and indicative interest rates are provided for experimental and educational purposes only.
+
+They should not be interpreted as actual lending decisions, credit offers, financial advice, or production banking policy.
