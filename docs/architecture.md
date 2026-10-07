@@ -2,7 +2,9 @@
 
 ## 1. Overview
 
-The final project combines the trained credit-risk models with a Flask REST API, React dashboard, and Docker-based runtime.
+The completed project integrates the final feature-engineered credit-scoring pipeline with a Flask REST API, React dashboard, and Docker-based runtime.
+
+The high-level architecture is:
 
 ```text
 Browser
@@ -18,27 +20,37 @@ Flask REST API
 model_service.py
    │
    ├── Logistic Regression
+   │   Ratios + Logs
+   │
    ├── XGBoost
+   │   Ratios
+   │
    └── PyTorch MLP
+       Ratios + Logs
           │
           ▼
    Meta Logistic Regression
           │
           ▼
+       Raw Stack PD
+          │
+          ▼
     Isotonic Calibration
           │
           ▼
-      Final PD
-       /    \
-      /      \
+       Final PD
+        /    \
+       /      \
+      ▼        ▼
 Financial    XGBoost
 Engine       SHAP
-      \      /
-       \    /
+      \        /
+       \      /
+        ▼    ▼
      JSON Response
           │
           ▼
-   React Dashboard
+    React Dashboard
 ```
 
 ## 2. Backend
@@ -56,25 +68,74 @@ deployment/
 
 ### `model_service.py`
 
-The model service loads the saved preprocessing and model artifacts and provides the main prediction functions.
+`model_service.py` is responsible for loading the frozen final model artifacts and executing the prediction pipeline.
 
-The prediction pipeline produces:
+The service performs:
 
-- Logistic Regression PD
-- XGBoost PD
-- MLP PD
-- Raw ensemble PD
-- Final calibrated PD
+1. applicant-data preparation;
+2. final feature engineering;
+3. model-specific preprocessing;
+4. Logistic Regression inference;
+5. XGBoost inference;
+6. MLP inference;
+7. meta-model inference;
+8. isotonic calibration;
+9. XGBoost SHAP explanation.
+
+The main prediction path is:
+
+```text
+Applicant Record
+       │
+       ▼
+make_features(...)
+       │
+       ├── financial ratios
+       └── log-transformed features
+       │
+       ▼
+Model-Specific Preprocessing
+       │
+       ├── LR Preprocessor
+       ├── XGB Preprocessor
+       └── MLP Preprocessor
+       │
+       ▼
+Base Model Probabilities
+       │
+       ▼
+[LR PD, XGB PD, MLP PD]
+       │
+       ▼
+Meta Logistic Regression
+       │
+       ▼
+Raw Ensemble PD
+       │
+       ▼
+Isotonic Calibration
+       │
+       ▼
+Final Calibrated PD
+```
+
+The prediction service therefore produces:
+
+- Logistic Regression PD;
+- XGBoost PD;
+- MLP PD;
+- raw ensemble PD;
+- final calibrated PD.
 
 It also provides:
 
-- Expected Loss calculation
-- Indicative-rate calculation
-- XGBoost SHAP explanation
+- Expected Loss;
+- indicative interest rate;
+- XGBoost SHAP explanation.
 
-### Flask API
+## 3. Flask API
 
-`app.py` exposes the HTTP interface.
+`deployment/app.py` exposes the HTTP interface.
 
 The main endpoints are:
 
@@ -95,75 +156,297 @@ A prediction request follows the general structure:
 }
 ```
 
-The backend expects a complete applicant record rather than only the fields visible in the dashboard.
+The backend expects a complete applicant feature record.
 
-The response contains component-model probabilities, final calibrated PD, financial outputs, and XGBoost explanation information.
+The dashboard exposes only a selected subset of variables for editing. Applicant variables that are not edited remain at their baseline values.
 
-## 3. Saved Model Artifacts
+The API response contains the model probabilities, financial outputs, and explanation information required by the frontend.
 
-The deployed model artifacts are stored in:
+## 4. Final Saved Model Artifacts
+
+The frozen final deployment artifacts are stored in:
+
+```text
+models_final/
+├── feature_config.json
+├── isotonic_calibrator.joblib
+├── lr_model.joblib
+├── lr_preprocessor.joblib
+├── meta_logistic.joblib
+├── mlp_metadata.json
+├── mlp_preprocessor.joblib
+├── mlp_state.pt
+├── xgb_model.joblib
+└── xgb_preprocessor.joblib
+```
+
+These artifacts correspond to the final feature-engineered pipeline.
+
+### Logistic Regression
+
+The Logistic Regression deployment uses:
+
+```text
+lr_preprocessor.joblib
+lr_model.joblib
+```
+
+Its final feature configuration includes financial ratios and retained log-transformed financial features.
+
+### XGBoost
+
+The XGBoost deployment uses:
+
+```text
+xgb_preprocessor.joblib
+xgb_model.joblib
+```
+
+Its final feature configuration includes the retained financial-ratio features.
+
+XGBoost is also the component used for SHAP explanations.
+
+### MLP
+
+The MLP deployment uses:
+
+```text
+mlp_preprocessor.joblib
+mlp_state.pt
+mlp_metadata.json
+```
+
+The metadata file stores the information required to reconstruct the deployed network architecture.
+
+Its final feature configuration includes financial ratios and retained log-transformed features.
+
+### Meta-Learner
+
+The stacking layer uses:
+
+```text
+meta_logistic.joblib
+```
+
+It receives:
+
+```text
+[LR PD, XGB PD, MLP PD]
+```
+
+and returns the raw ensemble probability.
+
+### Calibration
+
+The final probability mapping uses:
+
+```text
+isotonic_calibrator.joblib
+```
+
+The isotonic calibrator transforms the raw ensemble probability into the deployed final PD.
+
+### Feature Configuration
+
+The file:
+
+```text
+feature_config.json
+```
+
+stores configuration information required by the final feature-engineering process.
+
+This helps keep the deployed transformations aligned with the final modelling experiment.
+
+## 5. Historical and Final Model Directories
+
+The repository may contain both:
 
 ```text
 models/
-├── baseline_lr.joblib
-├── xgb_pipeline.joblib
-├── mlp_preprocessor.joblib
-├── mlp_metadata.joblib
-├── mlp_state_dict.pt
-├── meta_logistic.joblib
-├── platt_calibrator.joblib
-└── isotonic_calibrator.joblib
+models_final/
 ```
 
-The final prediction path uses the baseline LR, XGBoost, MLP, meta-logistic model, and isotonic calibrator.
+They have different roles.
 
-The Platt calibrator is retained as an experimental artifact from the calibration comparison.
+`models/` contains artifacts associated with earlier stages of the experimental workflow.
 
-## 4. Frontend
+`models_final/` contains the frozen feature-engineered artifacts used by the completed deployment.
 
-The React application is located in `frontend/`.
+The Dockerized final application uses:
 
-The dashboard operates on a complete baseline applicant record. A selected subset of meaningful variables is exposed to the user for scenario analysis.
+```text
+models_final/
+```
 
-Examples include:
+The earlier `models/` directory should therefore not be interpreted as the currently deployed final model.
 
-- income
-- credit amount
-- annuity
-- goods price
-- age
-- employment duration
-- external source scores
-- selected categorical applicant characteristics
+## 6. Frontend
 
-Variables that are not exposed in the interface retain their baseline values.
+The React application is located in:
+
+```text
+frontend/
+```
+
+The dashboard operates on a complete baseline applicant record.
+
+A selected subset of meaningful variables is exposed for interactive scenario analysis.
+
+Editable numerical variables include examples such as:
+
+- income;
+- credit amount;
+- annuity;
+- goods price;
+- age;
+- employment duration;
+- external-source scores.
+
+Editable categorical variables include examples such as:
+
+- gender;
+- car ownership;
+- property ownership;
+- education;
+- income type;
+- housing type.
+
+Variables not exposed in the interface retain their baseline applicant values.
+
+## 7. Dashboard Outputs
 
 The interface displays:
 
-- component-model probabilities
-- raw ensemble probability
-- calibrated final PD
-- Expected Loss
-- indicative rate
-- XGBoost SHAP drivers
-- baseline-versus-current-scenario comparison
+- baseline-versus-current-scenario comparison;
+- Logistic Regression probability;
+- XGBoost probability;
+- MLP probability;
+- raw ensemble probability;
+- calibrated final PD;
+- Expected Loss;
+- indicative interest rate;
+- XGBoost SHAP drivers.
 
-LGD is controlled separately because it is a financial scenario assumption rather than a predictive model feature.
+The interface is designed as a decision-support and scenario-analysis prototype rather than an automatic lending-decision system.
 
-## 5. Docker Architecture
+## 8. Financial Scenario Layer
+
+The financial layer uses:
+
+```text
+Expected Loss = PD × LGD × EAD
+```
+
+where:
+
+```text
+PD  = final calibrated model probability
+LGD = user-selected scenario assumption
+EAD = AMT_CREDIT proxy
+```
+
+The indicative-rate prototype uses:
+
+```text
+Indicative Rate = 0.09 + (PD × LGD)
+```
+
+LGD is handled outside the predictive model.
+
+Therefore:
+
+```text
+Applicant Features
+       │
+       ▼
+      PD
+       │
+       ├──────────────┐
+       │              │
+       ▼              ▼
+     × LGD          × LGD
+       │              │
+       ▼              ▼
+Expected Loss    Indicative Rate
+```
+
+Changing LGD changes the financial outputs but does not cause the predictive model to generate a different PD.
+
+## 9. Explainability Layer
+
+SHAP explanations are generated for the XGBoost component.
+
+The general explanation path is:
+
+```text
+Applicant
+   │
+   ▼
+XGBoost Feature Engineering
+   │
+   ▼
+XGBoost Preprocessor
+   │
+   ▼
+XGBoost Model
+   │
+   ▼
+Tree SHAP
+   │
+   ▼
+Top Local Drivers
+```
+
+The SHAP values explain XGBoost behaviour.
+
+They are not an exact decomposition of:
+
+- the Logistic Regression model;
+- the MLP;
+- the meta-logistic model;
+- isotonic calibration; or
+- the complete final PD.
+
+They should also not be interpreted as causal effects.
+
+## 10. Docker Architecture
 
 The application uses two containers managed by Docker Compose.
+
+```text
+                 Docker Compose
+                /              \
+               /                \
+              ▼                  ▼
+       Backend Container    Frontend Container
+        Python / Flask       React → Nginx
+              │                  │
+              │                  │
+           Port 5000          Port 80
+              │                  │
+              ▼                  ▼
+       localhost:5000      localhost:8080
+```
 
 ### Backend Container
 
 The backend container:
 
-1. Uses Python 3.12 slim.
-2. Installs the Python deployment requirements.
-3. Installs CPU-only PyTorch.
-4. Copies the deployment code.
-5. Copies the saved model artifacts.
-6. Starts Flask on port 5000.
+1. uses Python 3.12 slim;
+2. installs the Python deployment dependencies;
+3. installs CPU-only PyTorch;
+4. copies the deployment code;
+5. copies `models_final/`;
+6. starts Flask on port 5000.
+
+The relevant final model copy step is conceptually:
+
+```text
+Repository models_final/
+          ↓
+Container /app/models_final/
+```
 
 Host mapping:
 
@@ -173,10 +456,11 @@ Host mapping:
 
 ### Frontend Container
 
-The frontend uses a multi-stage build:
+The frontend uses a multi-stage Docker build.
 
-1. Node builds the React/Vite application.
-2. Nginx serves the resulting production files.
+The first stage uses Node to build the React/Vite application.
+
+The second stage uses Nginx to serve the generated production files.
 
 Host mapping:
 
@@ -184,7 +468,43 @@ Host mapping:
 8080:80
 ```
 
-## 6. Running the Complete Application
+The user therefore accesses the dashboard through:
+
+```text
+http://localhost:8080
+```
+
+## 11. Request Flow
+
+A normal prediction request follows this sequence:
+
+```text
+1. User changes applicant variables in React
+                    ↓
+2. React constructs complete applicant scenario
+                    ↓
+3. POST /predict
+                    ↓
+4. Flask validates request
+                    ↓
+5. model_service performs feature engineering
+                    ↓
+6. LR, XGB and MLP generate probabilities
+                    ↓
+7. MetaLR produces raw ensemble probability
+                    ↓
+8. Isotonic mapping produces final PD
+                    ↓
+9. Financial outputs are calculated
+                    ↓
+10. XGBoost SHAP explanation is generated
+                    ↓
+11. JSON response returned to React
+                    ↓
+12. Dashboard displays scenario results
+```
+
+## 12. Running the Complete Application
 
 From the repository root:
 
@@ -208,32 +528,66 @@ To stop the application:
 docker compose down
 ```
 
-After the images have been built, the application can normally be restarted with:
+After the images have already been built, the application can normally be restarted using:
 
 ```bash
 docker compose up
 ```
 
-## 7. Development and Production-Style Workflows
+## 13. Development and Local Production-Style Workflows
 
-During development, Flask can run in Docker while React runs through the Vite development server for faster frontend iteration.
+During development, Flask and React can be run independently to support faster iteration.
 
-The final local production-style configuration runs both services using Docker Compose.
+The completed local production-style configuration uses Docker Compose to run the frontend and backend together.
 
-The current frontend/backend configuration is designed for local execution. Public cloud deployment would require additional production configuration and is outside the implemented project scope.
+The final architecture demonstrates:
 
-## 8. Deployment Scope
+```text
+Model Artifacts
+      +
+REST Model Serving
+      +
+Interactive Frontend
+      +
+Containerized Runtime
+```
 
-The implemented system demonstrates:
+without requiring the original training dataset simply to run inference.
+
+## 14. Deployment Scope
+
+The implemented architecture demonstrates:
 
 - model serialization;
-- reproducible preprocessing;
-- multi-model inference;
+- reproducible model-specific preprocessing;
+- feature-engineered inference;
+- multi-model prediction;
+- OOF-derived stacking architecture;
 - probability calibration;
-- financial calculations;
-- model explanation;
+- Expected Loss calculation;
+- indicative-rate scenario analysis;
+- local XGBoost SHAP explanation;
 - REST-based model serving;
 - interactive frontend integration;
-- containerized deployment.
+- Dockerized execution.
 
-It should be treated as a research prototype rather than a production lending platform.
+## 15. Production Limitations
+
+The current architecture is a local academic research prototype.
+
+It does not implement:
+
+- live credit-bureau integration;
+- live banking/payment-system integration;
+- user authentication and authorization;
+- public HTTPS deployment;
+- production secrets management;
+- production database persistence;
+- automated model monitoring;
+- drift monitoring;
+- CI/CD;
+- formal model-governance workflows;
+- production fairness controls;
+- regulatory lending-decision infrastructure.
+
+The application should therefore be interpreted as evidence that the modelling framework can be integrated into a functioning decision-support prototype, rather than as a production-ready lending platform.
