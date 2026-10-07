@@ -1,0 +1,31 @@
+{
+  "LR": "ratios_logs",
+  "XGB": "ratios",
+  "MLP": "ratios_logs",
+  "ratios": {
+    "CREDIT_INCOME_RATIO": [
+      "AMT_CREDIT",
+      "AMT_INCOME_TOTAL"
+    ],
+    "ANNUITY_INCOME_RATIO": [
+      "AMT_ANNUITY",
+      "AMT_INCOME_TOTAL"
+    ],
+    "CREDIT_GOODS_RATIO": [
+      "AMT_CREDIT",
+      "AMT_GOODS_PRICE"
+    ],
+    "ANNUITY_CREDIT_RATIO": [
+      "AMT_ANNUITY",
+      "AMT_CREDIT"
+    ]
+  },
+  "log_columns": [
+    "AMT_INCOME_TOTAL",
+    "AMT_CREDIT",
+    "AMT_ANNUITY",
+    "AMT_GOODS_PRICE"
+  ],
+  "random_state": 42,
+  "n_folds": 5
+}

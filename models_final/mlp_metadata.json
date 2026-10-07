@@ -1,0 +1,12 @@
+{
+  "input_dim": 251,
+  "hidden_layers": [
+    128,
+    64
+  ],
+  "dropout": 0.2,
+  "epochs": 12,
+  "batch_size": 2048,
+  "learning_rate": 0.001,
+  "representation": "ratios_logs"
+}
